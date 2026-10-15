@@ -1,107 +1,126 @@
-from fastapi import APIRouter
-from fastapi import Body
+from fastapi import APIRouter, Body
+from APP.schemas.Product import ProductCreate
 
 router = APIRouter(
-    prefix = "/products",
-    tags = ["Products"]
+    prefix="/products",
+    tags=["Products"]
 )
 
-products =[
+products = [
     {
-        "id" : 1,
-        "name" : "Laptop",
-        "price" : 135000,
-        "quantity" : 25
+        "id": 1,
+        "name": "Laptop",
+        "price": 135000,
+        "quantity": 25
     },
     {
-        "id" : 2,
-        "name" : "phones",
-        "price" : 45000,
-        "quantity" : 65
+        "id": 2,
+        "name": "phones",
+        "price": 45000,
+        "quantity": 65
     }
 ]
 
+
+# GET - Get all products
 @router.get("/")
 def get_products():
     return products
 
-@router.get("/{product_id}")
-def get_prodcut(product_id : int):
 
+# GET - Get a product by ID
+@router.get("/{product_id}")
+def get_product(product_id: int):
     for product in products:
         if product["id"] == product_id:
             return product
 
-    return{"message" : " product not found"}   
+    return {
+        "message": "Product not found"
+    }
 
 
-# to add the item 
+# POST - Create a new product with Pydantic validation
 @router.post("/")
-def create_product(product: dict = Body(...)):
+def create_product(product: ProductCreate):
+
+    new_product = product.model_dump()
+
     for exist_product in products:
-        if exist_product["id"] == product["id"]:
+        if exist_product["id"] == new_product["id"]:
             return {
                 "message": "Product ID already exists"
             }
 
-    products.append(product)
+    products.append(new_product)
 
     return {
         "message": "Product successfully added",
-        "product": product
+        "product": new_product
     }
 
-# patch (for updating a specific column of a item )
+
+# PATCH - Update specific fields of a product
 @router.patch("/{product_id}")
-def update_product(product_id : int, updated_data : dict = Body(...)):
+def update_product(
+    product_id: int,
+    updated_data: dict = Body(...)
+):
     for product in products:
         if product["id"] == product_id:
             product.update(updated_data)
 
-            return{ "message" : "product is updated",
-                    "product" : product
-                   }
+            return {
+                "message": "Product is updated",
+                "product": product
+            }
 
-    return{"message" : "product  not found "}
+    return {
+        "message": "Product not found"
+    }
 
 
-# put (replace the entire item )
+# PUT - Replace an entire product with Pydantic validation
 @router.put("/{product_id}")
-def replace_product(product_id: int, updated_product: dict):
-
+def replace_product(
+    product_id: int,
+    updated_product: ProductCreate
+):
     for index, product in enumerate(products):
 
         if product["id"] == product_id:
 
-            if updated_product["id"] != product_id:
-                return {"message": "product id does not change"}
+            if updated_product.id != product_id:
+                return {
+                    "message": "Product ID is mismatched"
+                }
 
-            products[index] = updated_product
+            products[index] = updated_product.model_dump()
 
             return {
-                "message": "product is successfully updated",
-                "product": updated_product
+                "message": "Product is successfully updated",
+                "product": products[index]
             }
 
     return {
-        "message": "product not found"
+        "message": "Product not found"
     }
 
-# delete method (delete the item from the products)
+
+# DELETE - Delete a product
 @router.delete("/{product_id}")
-def delete_product(product_id : int):
+def delete_product(product_id: int):
 
-    for index,product in enumerate(products):
+    for index, product in enumerate(products):
+        if product["id"] == product_id:
 
-        if product["id"] == product_id :
+            deleted_product = products.pop(index)
 
-            deleted_product = products.pop(index)    
-
-            return{
-                "message" : "product is successfully deleted",
-                "product" : deleted_product
+            return {
+                "message": "Product is successfully deleted",
+                "product": deleted_product
             }
 
-    return{
-        "message" : "product not found "
-    }    
+    return {
+        "message": "Product not found"
+    }
