@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body,HTTPException
 from APP.schemas.Product import ProductCreate
 
 router = APIRouter(
@@ -35,9 +35,10 @@ def get_product(product_id: int):
         if product["id"] == product_id:
             return product
 
-    return {
-        "message": "Product not found"
-    }
+    raise HTTPException(
+        status_code = 404,
+        detail = "product not found"
+    )
 
 
 # POST - Create a new product with Pydantic validation
@@ -75,9 +76,10 @@ def update_product(
                 "product": product
             }
 
-    return {
-        "message": "Product not found"
-    }
+    raise HTTPException(
+        status_code = 404,
+        detail = "product not found  // patch operation failed" 
+       )
 
 
 # PUT - Replace an entire product with Pydantic validation
@@ -102,9 +104,10 @@ def replace_product(
                 "product": products[index]
             }
 
-    return {
-        "message": "Product not found"
-    }
+    raise HTTPException(
+        status_code = 404,
+        detail = "product not found"
+    )
 
 
 # DELETE - Delete a product
@@ -121,6 +124,14 @@ def delete_product(product_id: int):
                 "product": deleted_product
             }
 
-    return {
-        "message": "Product not found"
-    }
+    raise HTTPException(
+        status_code = 404,
+     detail = "product not found"
+             )
+
+
+
+
+
+
+    
