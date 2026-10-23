@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body,HTTPException
+from fastapi import APIRouter, Body, HTTPException
 from APP.schemas.Product import ProductCreate
 
 router = APIRouter(
@@ -31,13 +31,14 @@ def get_products():
 # GET - Get a product by ID
 @router.get("/{product_id}")
 def get_product(product_id: int):
+
     for product in products:
         if product["id"] == product_id:
             return product
 
     raise HTTPException(
-        status_code = 404,
-        detail = "product not found"
+        status_code=404,
+        detail="Product not found"
     )
 
 
@@ -49,9 +50,10 @@ def create_product(product: ProductCreate):
 
     for exist_product in products:
         if exist_product["id"] == new_product["id"]:
-            return {
-                "message": "Product ID already exists"
-            }
+            raise HTTPException(
+                status_code=409,
+                detail="Product ID already exists"
+            )
 
     products.append(new_product)
 
@@ -67,6 +69,7 @@ def update_product(
     product_id: int,
     updated_data: dict = Body(...)
 ):
+
     for product in products:
         if product["id"] == product_id:
             product.update(updated_data)
@@ -77,9 +80,9 @@ def update_product(
             }
 
     raise HTTPException(
-        status_code = 404,
-        detail = "product not found  // patch operation failed" 
-       )
+        status_code=404,
+        detail="Product not found"
+    )
 
 
 # PUT - Replace an entire product with Pydantic validation
@@ -88,14 +91,16 @@ def replace_product(
     product_id: int,
     updated_product: ProductCreate
 ):
+
     for index, product in enumerate(products):
 
         if product["id"] == product_id:
 
             if updated_product.id != product_id:
-                return {
-                    "message": "Product ID is mismatched"
-                }
+                raise HTTPException(
+                    status_code=400,
+                    detail="Product ID mismatch"
+                )
 
             products[index] = updated_product.model_dump()
 
@@ -105,8 +110,8 @@ def replace_product(
             }
 
     raise HTTPException(
-        status_code = 404,
-        detail = "product not found"
+        status_code=404,
+        detail="Product not found"
     )
 
 
@@ -115,6 +120,7 @@ def replace_product(
 def delete_product(product_id: int):
 
     for index, product in enumerate(products):
+
         if product["id"] == product_id:
 
             deleted_product = products.pop(index)
@@ -125,13 +131,6 @@ def delete_product(product_id: int):
             }
 
     raise HTTPException(
-        status_code = 404,
-     detail = "product not found"
-             )
-
-
-
-
-
-
-    
+        status_code=404,
+        detail="Product not found"
+    )
