@@ -1,30 +1,21 @@
-from fastapi import APIRouter, Body, HTTPException
-from APP.schemas.Product import ProductCreate
+from fastapi import APIRouter, Body, HTTPException, Depends
+from sqlalchemy.orm import Session
 
+from APP.schemas.Product import ProductCreate
+from APP.models.product import Product
+from APP.database.dependencies import get_db
 router = APIRouter(
     prefix="/products",
     tags=["Products"]
 )
 
-products = [
-    {
-        "id": 1,
-        "name": "Laptop",
-        "price": 135000,
-        "quantity": 25
-    },
-    {
-        "id": 2,
-        "name": "phones",
-        "price": 45000,
-        "quantity": 65
-    }
-]
+
 
 
 # GET - Get all products
 @router.get("/")
-def get_products():
+def get_products(db : Session = Depends(get_db)):
+    products  = db.query(Product).all()
     return products
 
 
@@ -44,22 +35,36 @@ def get_product(product_id: int):
 
 # POST - Create a new product with Pydantic validation
 @router.post("/")
-def create_product(product: ProductCreate):
+def create_product(
+                   product: ProductCreate,
+                   db : Session = Depends(get_db)
+                   ):
 
-    new_product = product.model_dump()
+    new_product = Product(
+        id = product.id,
+        name = product.name,
+        price = product.price,
+        quantity = product.quantity
+    )
 
-    for exist_product in products:
-        if exist_product["id"] == new_product["id"]:
-            raise HTTPException(
-                status_code=409,
-                detail="Product ID already exists"
-            )
+    existing_product = db.query(Product).filter(
+                       Product.id == product.id
+                ).first()
 
-    products.append(new_product)
+    if existing_product :
 
-    return {
-        "message": "Product successfully added",
-        "product": new_product
+        raise HTTPException(
+            status_code = 409,
+            detail = "product ID is already exists "
+        )
+
+    db.add(new_product)
+    db.commit()
+    db.refresh(new_product)
+
+    return{
+        "message" : "Product is successfully added",
+        "product" : new_product
     }
 
 

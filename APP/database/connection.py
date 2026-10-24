@@ -16,6 +16,3 @@ print("Database engine created successfully!")
 
 with engine.connect() as connection:
     print("Database connection successful!")
-
-
-from APP.models.product import Product    
