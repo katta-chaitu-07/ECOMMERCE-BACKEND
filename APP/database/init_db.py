@@ -1,15 +1,27 @@
 from APP.database.connection import Base, engine
+
+# Register all models
 from APP.models.product import Product
-from sqlalchemy import inspect
+from APP.models.user import User
+from APP.models.cart import Cart
+from APP.models.CartItem import CartItem
+from APP.models.order import Order
+from APP.models.OrderItem import OrderItem
 
 
-# Create tables that do not exist yet
+# Create database tables
 Base.metadata.create_all(bind=engine)
 
-print("Database tables created successfully!")
+print("All database tables created successfully!")
 
 
-# Verify the tables in the database
+from sqlalchemy import inspect
+
 inspector = inspect(engine)
 
-print("Tables in database:", inspector.get_table_names())
+tables = inspector.get_table_names()
+
+print("Database Tables:")
+
+for table in tables:
+    print(table)

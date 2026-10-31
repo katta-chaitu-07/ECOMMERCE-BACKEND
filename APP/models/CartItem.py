@@ -1,0 +1,15 @@
+from sqlalchemy import Integer, Float , DateTime, String, ForeignKey, Column
+
+from APP.database.connection import Base
+
+class CartItem(Base):
+
+    __tablename__ = "cart_items"
+
+    id = Column(Integer, primary_key = True, index = True)
+
+    cart_id = Column(Integer, ForeignKey("carts.id"), nullable = False)
+
+    product_id = Column(Integer, ForeignKey("products.id") , nullable = False)
+
+    quantity = Column(Integer, nullable = False, default = 1)
