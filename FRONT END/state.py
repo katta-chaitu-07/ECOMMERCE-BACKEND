@@ -45,3 +45,39 @@ def initialize_session_state():
 
     if "registration_success" not in st.session_state:
         st.session_state.registration_success = False
+
+
+    # ----------------------------------------
+    # 6. Product Search
+    # ----------------------------------------
+
+    if "search_query" not in st.session_state:
+        st.session_state.search_query = ""
+
+
+    # ----------------------------------------
+    # 7. Product Category
+    # ----------------------------------------
+
+    if "selected_category" not in st.session_state:
+        st.session_state.selected_category = "All"
+
+
+    # ----------------------------------------
+    # 8. Price Filter
+    # ----------------------------------------
+
+    if "min_price" not in st.session_state:
+        st.session_state.min_price = 0
+
+
+    if "max_price" not in st.session_state:
+        st.session_state.max_price = None
+
+
+    # ----------------------------------------
+    # 9. Selected Product
+    # ----------------------------------------
+
+    if "selected_product" not in st.session_state:
+        st.session_state.selected_product = None
