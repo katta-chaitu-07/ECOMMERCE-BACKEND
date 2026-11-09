@@ -4,17 +4,28 @@
 
 import streamlit as st
 
+# Import logout function
+from services.auth import logout
+
 
 def render_navbar():
 
     # ----------------------------------------
-    # Create navigation columns
+    # CHECK AUTHENTICATION STATUS
     # ----------------------------------------
 
-    col1, col2, col3 = st.columns([2, 5, 2])
+    is_logged_in = st.session_state.get("access_token") is not None
 
     # ----------------------------------------
-    # Store Logo
+    # CREATE NAVIGATION COLUMNS
+    # ----------------------------------------
+
+    col1, col2, col3 = st.columns([2.5, 5, 2.5])
+
+    selected_page = None
+
+    # ----------------------------------------
+    # STORE LOGO
     # ----------------------------------------
 
     with col1:
@@ -34,56 +45,92 @@ def render_navbar():
         )
 
     # ----------------------------------------
-    # Navigation Buttons
+    # NAVIGATION BUTTONS
     # ----------------------------------------
 
     with col2:
 
-        nav1, nav2, nav3, nav4, nav5 = st.columns(5)
+        if is_logged_in:
 
-        navigation = {
-            "Home": nav1,
-            "Products": nav2,
-            "Cart": nav3,
-            "Orders": nav4,
-            "Login": nav5
-        }
+            nav1, nav2, nav3, nav4 = st.columns(4)
 
-        selected_page = None
+            navigation = {
+                "Home": nav1,
+                "Products": nav2,
+                "Cart": nav3,
+                "Orders": nav4
+            }
+
+        else:
+
+            nav1, nav2, nav3 = st.columns(3)
+
+            navigation = {
+                "Home": nav1,
+                "Products": nav2,
+                "Cart": nav3
+            }
 
         for page, column in navigation.items():
 
             with column:
 
-                if st.button(page, key=f"nav_{page}"):
+                if st.button(
+                    page,
+                    key=f"nav_{page}",
+                    use_container_width=True
+                ):
 
                     selected_page = page
 
     # ----------------------------------------
-    # Authentication Section
+    # AUTHENTICATION SECTION
     # ----------------------------------------
 
     with col3:
 
-        if st.session_state.access_token:
+        if is_logged_in:
 
-            if st.button("Logout", key="logout_button"):
+            user = st.session_state.get("user") or {}
 
-                st.session_state.access_token = None
-                st.session_state.user = None
+            user_name = user.get("name", "Account")
 
-                st.session_state.page = "Home"
+            st.caption(f"👤 {user_name}")
 
-                st.rerun()
+            if st.button(
+                "Logout",
+                key="logout_button",
+                use_container_width=True
+            ):
+
+                logout()
 
         else:
 
-            if st.button("Register", key="register_button"):
+            auth_col1, auth_col2 = st.columns(2)
 
-                selected_page = "Register"
+            with auth_col1:
+
+                if st.button(
+                    "Login",
+                    key="login_button",
+                    use_container_width=True
+                ):
+
+                    selected_page = "Login"
+
+            with auth_col2:
+
+                if st.button(
+                    "Register",
+                    key="register_button",
+                    use_container_width=True
+                ):
+
+                    selected_page = "Register"
 
     # ----------------------------------------
-    # Update Current Page
+    # UPDATE CURRENT PAGE
     # ----------------------------------------
 
     if selected_page:
@@ -91,6 +138,10 @@ def render_navbar():
         st.session_state.page = selected_page
 
         st.rerun()
+
+    # ----------------------------------------
+    # NAVIGATION DIVIDER
+    # ----------------------------------------
 
     st.divider()
 

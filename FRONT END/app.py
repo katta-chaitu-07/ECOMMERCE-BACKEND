@@ -1,9 +1,42 @@
-
 import streamlit as st
-import requests
-import html
+from pathlib import Path
 
-# ---------------- CONFIGURATION ----------------
+
+# ==========================================
+# IMPORTS
+# ==========================================
+
+# Initialize session state
+from state import initialize_session_state
+
+# Navigation component
+from components.navbar import render_navbar
+
+# Homepage
+from pages.home import render_home_page
+
+# Registration page
+from pages.register import render_register_page
+
+# Authentication services
+from services.auth import (
+    login,
+    logout,
+    is_authenticated
+)
+
+# Product services
+from services.product import (
+    get_all_products,
+    get_product_by_id,
+    search_products,
+    filter_products
+)
+
+
+# ==========================================
+# PAGE CONFIGURATION
+# ==========================================
 
 st.set_page_config(
     page_title="Chaitu Store | Online Shopping",
@@ -12,359 +45,471 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-API_URL = "http://127.0.0.1:8000/products/"
 
-# ---------------- SESSION STATE ----------------
+# ==========================================
+# LOAD CUSTOM CSS
+# ==========================================
 
-if "cart" not in st.session_state:
-    st.session_state.cart = {}
+def load_styles():
 
-if "search" not in st.session_state:
-    st.session_state.search = ""
+    """
+    Load custom CSS styles from the styles directory.
+    """
 
-# ---------------- CUSTOM CSS ----------------
+    css_file = Path(__file__).parent / "styles" / "style.css"
 
-st.markdown("""
-<style>
+    if css_file.exists():
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        with open(css_file, "r", encoding="utf-8") as file:
 
-html, body, [class*="css"] {
-    font-family: 'Inter', sans-serif;
-}
+            css = file.read()
 
-.stApp {
-    background-color: #f5f7fb;
-}
-
-.block-container {
-    padding-top: 1.5rem;
-    padding-bottom: 3rem;
-    max-width: 1250px;
-}
-
-#MainMenu, footer, header {
-    visibility: hidden;
-}
-
-/* Navigation */
-
-.navbar {
-    background: #101828;
-    padding: 22px 30px;
-    border-radius: 14px;
-    color: white;
-    margin-bottom: 28px;
-}
-
-.brand {
-    font-size: 25px;
-    font-weight: 800;
-    color: white;
-}
-
-.brand span {
-    color: #fbbf24;
-}
-
-.nav-info {
-    color: #d0d5dd;
-    font-size: 13px;
-}
-
-/* Hero */
-
-.hero {
-    background: linear-gradient(115deg, #172554, #2563eb);
-    padding: 55px 45px;
-    border-radius: 20px;
-    color: white;
-    margin-bottom: 35px;
-}
-
-.hero-tag {
-    background: rgba(255,255,255,0.16);
-    padding: 8px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-}
-
-.hero h1 {
-    font-size: 40px;
-    line-height: 1.2;
-    font-weight: 800;
-    margin-top: 22px;
-}
-
-.hero p {
-    color: #dbeafe;
-    font-size: 15px;
-    max-width: 500px;
-}
-
-/* Section headings */
-
-.section-title {
-    font-size: 25px;
-    font-weight: 800;
-    color: #101828;
-    margin-top: 30px;
-}
-
-.section-subtitle {
-    color: #667085;
-    font-size: 13px;
-    margin-bottom: 20px;
-}
-
-/* Product cards */
-
-.product-card {
-    background: white;
-    padding: 18px;
-    border-radius: 15px;
-    border: 1px solid #eaecf0;
-    margin-bottom: 8px;
-    min-height: 145px;
-    transition: 0.2s ease;
-}
-
-.product-card:hover {
-    border-color: #2563eb;
-    box-shadow: 0 8px 25px rgba(16,24,40,0.08);
-    transform: translateY(-3px);
-}
-
-.product-icon {
-    height: 65px;
-    background: #eff4ff;
-    border-radius: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 32px;
-    margin-bottom: 15px;
-}
-
-.product-name {
-    font-size: 15px;
-    font-weight: 700;
-    color: #101828;
-    margin-bottom: 8px;
-}
-
-.product-price {
-    color: #2563eb;
-    font-size: 19px;
-    font-weight: 800;
-}
-
-.product-stock {
-    color: #667085;
-    font-size: 12px;
-}
-
-/* Buttons */
-
-.stButton > button {
-    background: #2563eb;
-    color: white;
-    border: none;
-    border-radius: 9px;
-    font-weight: 600;
-    height: 42px;
-    transition: 0.2s;
-}
-
-.stButton > button:hover {
-    background: #1d4ed8;
-    color: white;
-    border: none;
-}
-
-/* Search input */
-
-.stTextInput input {
-    border-radius: 10px;
-    border: 1px solid #d0d5dd;
-    background: white;
-}
-
-</style>
-""", unsafe_allow_html=True)
+            st.markdown(
+                f"<style>{css}</style>",
+                unsafe_allow_html=True
+            )
 
 
-# ---------------- NAVIGATION ----------------
+# ==========================================
+# INITIALIZE APPLICATION
+# ==========================================
 
-cart_count = sum(
-    item["quantity"]
-    for item in st.session_state.cart.values()
-)
+def initialize_app():
 
-st.markdown(f"""
-<div class="navbar">
-    <div class="brand">
-        CHAITU<span>STORE.</span>
-    </div>
-    <div class="nav-info">
-        YOUR ONE-STOP SHOPPING DESTINATION
-    </div>
-</div>
-""", unsafe_allow_html=True)
+    """
+    Initialize application-level session variables.
+    """
 
-nav1, nav2, nav3 = st.columns([5, 1, 1])
-
-with nav1:
-    st.caption("HOME  /  SHOP  /  PRODUCTS")
-
-with nav2:
-    st.write("👤 Account")
-
-with nav3:
-    st.write(f"🛒 Cart ({cart_count})")
+    initialize_session_state()
 
 
-# ---------------- HERO SECTION ----------------
+# ==========================================
+# LOGIN PAGE
+# ==========================================
 
-st.markdown("""
-<div class="hero">
-    <span class="hero-tag">WELCOME TO CHAITU STORE</span>
+def render_login_page():
 
-    <h1>Discover Products.<br>
-    Enjoy Better Shopping.</h1>
+    st.title("🔐 Welcome Back")
 
-    <p>
-    Explore our collection of products and find
-    everything you need in one convenient place.
-    </p>
-</div>
-""", unsafe_allow_html=True)
+    st.write("Login to your Chaitu Store account.")
+
+    st.markdown("---")
+
+    # Login form
+    with st.form("login_form"):
+
+        # Email
+        email = st.text_input(
+            "Email Address",
+            placeholder="Enter your email"
+        )
+
+        # Password
+        password = st.text_input(
+            "Password",
+            type="password",
+            placeholder="Enter your password"
+        )
+
+        # Submit button
+        submitted = st.form_submit_button(
+            "Login",
+            use_container_width=True
+        )
+
+        if submitted:
+
+            # Validate fields
+            if not email or not password:
+
+                st.error(
+                    "Please enter both email and password."
+                )
+
+            else:
+
+                # Authenticate user
+                with st.spinner("Authenticating..."):
+
+                    response = login(
+                        email=email.strip(),
+                        password=password
+                    )
+
+                # Check login response
+                if response.get("success"):
+
+                    st.success("Login successful!")
+
+                    st.session_state.page = "Home"
+
+                    st.rerun()
+
+                else:
+
+                    st.error(
+                        response.get("error", "Login failed.")
+                    )
+
+    # Registration navigation
+    st.write("Don't have an account?")
+
+    if st.button("Create New Account"):
+
+        st.session_state.page = "Register"
+
+        st.rerun()
 
 
-# ---------------- SEARCH ----------------
+# ==========================================
+# PRODUCTS PAGE
+# ==========================================
 
-st.markdown(
-    '<div class="section-title">Find Your Products</div>',
-    unsafe_allow_html=True
-)
+def render_products_page():
 
-search = st.text_input(
-    "Search",
-    placeholder="Search for products...",
-    label_visibility="collapsed"
-)
+    st.title("🛍️ Explore Our Products")
 
+    st.write("Discover products available at Chaitu Store.")
 
-# ---------------- FETCH PRODUCTS ----------------
+    st.markdown("---")
 
-st.markdown("""
-<div class="section-title">Featured Products</div>
-<div class="section-subtitle">
-Explore our available products
-</div>
-""", unsafe_allow_html=True)
+    # Product search
+    search_query = st.text_input(
+        "🔍 Search Products",
+        placeholder="Search by product name..."
+    )
 
-try:
+    # Retrieve products from backend
+    response = get_all_products()
 
-    response = requests.get(API_URL, timeout=5)
-    response.raise_for_status()
+    if not response["success"]:
 
-    products = response.json()
+        st.error(
+            f"Unable to load products: {response['error']}"
+        )
 
-    if not isinstance(products, list):
-        st.error("Invalid product data received.")
-        st.stop()
+        return
 
-    filtered_products = [
+    products = response["data"]
+
+    if not products:
+
+        st.info("No products are currently available.")
+
+        return
+
+    # Search filter
+    if search_query:
+
+        products = [
+            product for product in products
+            if search_query.lower() in product["name"].lower()
+        ]
+
+    # Price filter
+    st.subheader("Filter Products")
+
+    min_available = min(
+        product["price"] for product in response["data"]
+    )
+
+    max_available = max(
+        product["price"] for product in response["data"]
+    )
+
+    min_price, max_price = st.slider(
+        "Select Price Range",
+        min_value=int(min_available),
+        max_value=max(
+            int(max_available),
+            int(min_available) + 1
+        ),
+        value=(
+            int(min_available),
+            max(
+                int(max_available),
+                int(min_available) + 1
+            )
+        )
+    )
+
+    products = [
         product for product in products
-        if search.lower() in product["name"].lower()
+        if min_price <= product["price"] <= max_price
     ]
 
-    if not filtered_products:
+    st.markdown("---")
 
-        st.info("No products available.")
+    st.subheader(
+        f"Available Products ({len(products)})"
+    )
 
-    else:
+    # Display products in three columns
+    columns = st.columns(3)
 
-        cols = st.columns(3)
+    for index, product in enumerate(products):
 
-        for index, product in enumerate(filtered_products):
+        with columns[index % 3]:
 
-            with cols[index % 3]:
+            with st.container(border=True):
 
-                name = html.escape(str(product["name"]))
-                price = float(product["price"])
-                quantity = int(product["quantity"])
+                st.subheader(product["name"])
 
-                st.markdown(f"""
-                <div class="product-card">
+                st.markdown(
+                    f"### ₹{product['price']:,.2f}"
+                )
 
-                    <div class="product-icon">
-                        🛍️
-                    </div>
+                st.write(
+                    f"Available Quantity: {product['quantity']}"
+                )
 
-                    <div class="product-name">
-                        {name}
-                    </div>
-
-                    <div class="product-price">
-                        ₹{price:,.2f}
-                    </div>
-
-                    <div class="product-stock">
-                        {quantity} units available
-                    </div>
-
-                </div>
-                """, unsafe_allow_html=True)
-
+                # Add product to cart
                 if st.button(
-                    "Add to Cart",
-                    key=f"product_{product['id']}",
+                    "🛒 Add to Cart",
+                    key=f"add_product_{product['id']}",
                     use_container_width=True,
-                    disabled=quantity <= 0
+                    disabled=product["quantity"] <= 0
                 ):
 
-                    product_id = product["id"]
+                    cart = st.session_state.cart
 
-                    if product_id in st.session_state.cart:
+                    # Check whether product already exists
+                    existing_item = next(
+                        (
+                            item for item in cart
+                            if item["id"] == product["id"]
+                        ),
+                        None
+                    )
 
-                        st.session_state.cart[
-                            product_id
-                        ]["quantity"] += 1
+                    if existing_item:
+
+                        if existing_item["quantity"] < product["quantity"]:
+
+                            existing_item["quantity"] += 1
+
+                            st.success("Cart quantity updated!")
+
+                        else:
+
+                            st.warning(
+                                "Maximum available quantity reached."
+                            )
 
                     else:
 
-                        st.session_state.cart[product_id] = {
+                        cart.append({
+                            "id": product["id"],
                             "name": product["name"],
-                            "price": price,
+                            "price": product["price"],
                             "quantity": 1
-                        }
+                        })
 
-                    st.toast(f"{name} added to cart!")
+                        st.success("Product added to cart!")
 
-except requests.exceptions.RequestException:
+                    st.rerun()
 
-    st.error(
-        "Unable to connect to the backend. "
-        "Please start FastAPI."
+
+# ==========================================
+# SHOPPING CART PAGE
+# ==========================================
+
+def render_cart_page():
+
+    st.title("🛒 Your Shopping Cart")
+
+    cart = st.session_state.cart
+
+    if not cart:
+
+        st.info("Your shopping cart is empty.")
+
+        if st.button("Continue Shopping"):
+
+            st.session_state.page = "Products"
+
+            st.rerun()
+
+        return
+
+    total_amount = 0
+
+    # Display cart items
+    for index, item in enumerate(cart):
+
+        col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+
+        with col1:
+
+            st.write(f"**{item['name']}**")
+
+        with col2:
+
+            st.write(f"₹{item['price']:,.2f}")
+
+        with col3:
+
+            st.write(f"Qty: {item['quantity']}")
+
+        with col4:
+
+            if st.button(
+                "Remove",
+                key=f"remove_{item['id']}"
+            ):
+
+                cart.pop(index)
+
+                st.rerun()
+
+        total_amount += item["price"] * item["quantity"]
+
+    st.markdown("---")
+
+    st.subheader(
+        f"Total Amount: ₹{total_amount:,.2f}"
+    )
+
+    # Continue shopping
+    if st.button(
+        "Continue Shopping",
+        use_container_width=True
+    ):
+
+        st.session_state.page = "Products"
+
+        st.rerun()
+
+    # Checkout
+    if st.button(
+        "Proceed to Checkout",
+        use_container_width=True
+    ):
+
+        if not is_authenticated():
+
+            st.warning(
+                "Please log in before proceeding to checkout."
+            )
+
+            st.session_state.page = "Login"
+
+            st.rerun()
+
+        else:
+
+            st.info(
+                "Checkout functionality will be implemented next."
+            )
+
+
+# ==========================================
+# ORDERS PAGE
+# ==========================================
+
+def render_orders_page():
+
+    st.title("📦 My Orders")
+
+    # Check authentication
+    if not is_authenticated():
+
+        st.warning("Please log in to view your orders.")
+
+        if st.button("Login Now"):
+
+            st.session_state.page = "Login"
+
+            st.rerun()
+
+        return
+
+    st.info(
+        "Order management will be implemented in the next phase."
     )
 
 
-# ---------------- FOOTER ----------------
+# ==========================================
+# PAGE ROUTING
+# ==========================================
 
-st.divider()
+def render_page():
 
-st.markdown("""
-<div style="text-align:center; padding:20px; color:#667085;">
+    """
+    Display the page selected by the user.
+    """
 
-    <h3 style="color:#101828;">CHAITU STORE.</h3>
+    current_page = st.session_state.page
 
-    Your shopping experience, simplified.
+    # HOME
+    if current_page == "Home":
 
-    <p style="font-size:12px;">
-        Built with Streamlit + FastAPI
-    </p>
+        render_home_page()
 
-</div>
-""", unsafe_allow_html=True)
+    # PRODUCTS
+    elif current_page == "Products":
+
+        render_products_page()
+
+    # LOGIN
+    elif current_page == "Login":
+
+        render_login_page()
+
+    # REGISTER
+    elif current_page == "Register":
+
+        render_register_page()
+
+    # CART
+    elif current_page == "Cart":
+
+        render_cart_page()
+
+    # ORDERS
+    elif current_page == "Orders":
+
+        render_orders_page()
+
+    # INVALID PAGE
+    else:
+
+        st.error("Page not found.")
+
+        if st.button("Return Home"):
+
+            st.session_state.page = "Home"
+
+            st.rerun()
+
+
+# ==========================================
+# MAIN APPLICATION
+# ==========================================
+
+def main():
+
+    """
+    Main entry point of Chaitu Store.
+    """
+
+    # Initialize session state
+    initialize_app()
+
+    # Load custom CSS
+    load_styles()
+
+    # Render navigation bar
+    render_navbar()
+
+    # Render selected page
+    render_page()
+
+
+# ==========================================
+# APPLICATION EXECUTION
+# ==========================================
+
+if __name__ == "__main__":
+
+    main()
