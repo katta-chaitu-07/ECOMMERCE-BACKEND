@@ -3,6 +3,8 @@ from APP.routers.product import router as product_router
 
 from APP.routers.user import router as user_router
 
+from APP.routers import cart
+
 app = FastAPI(
     title="E-Commerce Backend API",
     description="Backend API for an e-commerce application",
@@ -15,4 +17,7 @@ def home():
 
 app.include_router(product_router)
 app.include_router(user_router)
+
+
+app.include_router(cart.router)
 
