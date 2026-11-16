@@ -1,37 +1,22 @@
+
 import streamlit as st
 from pathlib import Path
 
-
-# ==========================================
-# IMPORTS
-# ==========================================
-
-# Initialize session state
 from state import initialize_session_state
 
-# Navigation component
 from components.navbar import render_navbar
 
-# Homepage
 from pages.home import render_home_page
-
-# Registration page
+from pages.products import render_products_page
 from pages.register import render_register_page
 
-# Authentication services
-from services.auth import (
-    login,
-    logout,
-    is_authenticated
+from services.auth import login, logout, is_authenticated
+from services.cart import (
+    get_cart,
+    update_cart_item,
+    remove_from_cart
 )
-
-# Product services
-from services.product import (
-    get_all_products,
-    get_product_by_id,
-    search_products,
-    filter_products
-)
+from services.order import checkout, get_orders
 
 
 # ==========================================
@@ -47,40 +32,30 @@ st.set_page_config(
 
 
 # ==========================================
-# LOAD CUSTOM CSS
+# LOAD WEBSITE STYLESHEET
 # ==========================================
+
+BASE_DIR = Path(__file__).resolve().parent
+
 
 def load_styles():
 
-    """
-    Load custom CSS styles from the styles directory.
-    """
+    css_path = BASE_DIR / "styles" / "style.css"
 
-    css_file = Path(__file__).parent / "styles" / "style.css"
+    if not css_path.is_file():
+        st.error(f"Website stylesheet not found: {css_path}")
+        return
 
-    if css_file.exists():
+    try:
+        css = css_path.read_text(encoding="utf-8")
 
-        with open(css_file, "r", encoding="utf-8") as file:
+        st.markdown(
+            f"<style>{css}</style>",
+            unsafe_allow_html=True
+        )
 
-            css = file.read()
-
-            st.markdown(
-                f"<style>{css}</style>",
-                unsafe_allow_html=True
-            )
-
-
-# ==========================================
-# INITIALIZE APPLICATION
-# ==========================================
-
-def initialize_app():
-
-    """
-    Initialize application-level session variables.
-    """
-
-    initialize_session_state()
+    except OSError as error:
+        st.error(f"Unable to load stylesheet: {error}")
 
 
 # ==========================================
@@ -89,398 +64,235 @@ def initialize_app():
 
 def render_login_page():
 
-    st.title("🔐 Welcome Back")
+    st.title("Welcome Back 👋")
+    st.write("Log in to continue shopping at Chaitu Store.")
 
-    st.write("Login to your Chaitu Store account.")
+    with st.container(border=True):
 
-    st.markdown("---")
-
-    # Login form
-    with st.form("login_form"):
-
-        # Email
         email = st.text_input(
             "Email Address",
             placeholder="Enter your email"
         )
 
-        # Password
         password = st.text_input(
             "Password",
             type="password",
             placeholder="Enter your password"
         )
 
-        # Submit button
-        submitted = st.form_submit_button(
-            "Login",
-            use_container_width=True
-        )
+        if st.button("Login", use_container_width=True):
 
-        if submitted:
-
-            # Validate fields
             if not email or not password:
+                st.warning("Please enter your email and password.")
+                return
 
-                st.error(
-                    "Please enter both email and password."
-                )
+            response = login(email, password)
+
+            if response.get("success"):
+
+                st.success("Login successful!")
+                st.session_state.page = "Home"
+                st.rerun()
 
             else:
+                st.error(
+                    response.get("error", "Login failed.")
+                )
 
-                # Authenticate user
-                with st.spinner("Authenticating..."):
-
-                    response = login(
-                        email=email.strip(),
-                        password=password
-                    )
-
-                # Check login response
-                if response.get("success"):
-
-                    st.success("Login successful!")
-
-                    st.session_state.page = "Home"
-
-                    st.rerun()
-
-                else:
-
-                    st.error(
-                        response.get("error", "Login failed.")
-                    )
-
-    # Registration navigation
     st.write("Don't have an account?")
 
-    if st.button("Create New Account"):
-
+    if st.button("Create an Account"):
         st.session_state.page = "Register"
-
         st.rerun()
 
 
 # ==========================================
-# PRODUCTS PAGE
-# ==========================================
-
-def render_products_page():
-
-    st.title("🛍️ Explore Our Products")
-
-    st.write("Discover products available at Chaitu Store.")
-
-    st.markdown("---")
-
-    # Product search
-    search_query = st.text_input(
-        "🔍 Search Products",
-        placeholder="Search by product name..."
-    )
-
-    # Retrieve products from backend
-    response = get_all_products()
-
-    if not response["success"]:
-
-        st.error(
-            f"Unable to load products: {response['error']}"
-        )
-
-        return
-
-    products = response["data"]
-
-    if not products:
-
-        st.info("No products are currently available.")
-
-        return
-
-    # Search filter
-    if search_query:
-
-        products = [
-            product for product in products
-            if search_query.lower() in product["name"].lower()
-        ]
-
-    # Price filter
-    st.subheader("Filter Products")
-
-    min_available = min(
-        product["price"] for product in response["data"]
-    )
-
-    max_available = max(
-        product["price"] for product in response["data"]
-    )
-
-    min_price, max_price = st.slider(
-        "Select Price Range",
-        min_value=int(min_available),
-        max_value=max(
-            int(max_available),
-            int(min_available) + 1
-        ),
-        value=(
-            int(min_available),
-            max(
-                int(max_available),
-                int(min_available) + 1
-            )
-        )
-    )
-
-    products = [
-        product for product in products
-        if min_price <= product["price"] <= max_price
-    ]
-
-    st.markdown("---")
-
-    st.subheader(
-        f"Available Products ({len(products)})"
-    )
-
-    # Display products in three columns
-    columns = st.columns(3)
-
-    for index, product in enumerate(products):
-
-        with columns[index % 3]:
-
-            with st.container(border=True):
-
-                st.subheader(product["name"])
-
-                st.markdown(
-                    f"### ₹{product['price']:,.2f}"
-                )
-
-                st.write(
-                    f"Available Quantity: {product['quantity']}"
-                )
-
-                # Add product to cart
-                if st.button(
-                    "🛒 Add to Cart",
-                    key=f"add_product_{product['id']}",
-                    use_container_width=True,
-                    disabled=product["quantity"] <= 0
-                ):
-
-                    cart = st.session_state.cart
-
-                    # Check whether product already exists
-                    existing_item = next(
-                        (
-                            item for item in cart
-                            if item["id"] == product["id"]
-                        ),
-                        None
-                    )
-
-                    if existing_item:
-
-                        if existing_item["quantity"] < product["quantity"]:
-
-                            existing_item["quantity"] += 1
-
-                            st.success("Cart quantity updated!")
-
-                        else:
-
-                            st.warning(
-                                "Maximum available quantity reached."
-                            )
-
-                    else:
-
-                        cart.append({
-                            "id": product["id"],
-                            "name": product["name"],
-                            "price": product["price"],
-                            "quantity": 1
-                        })
-
-                        st.success("Product added to cart!")
-
-                    st.rerun()
-
-
-# ==========================================
-# SHOPPING CART PAGE
+# CART PAGE
 # ==========================================
 
 def render_cart_page():
 
     st.title("🛒 Your Shopping Cart")
 
-    cart = st.session_state.cart
+    if not is_authenticated():
+        st.warning("Please log in to view your cart.")
 
-    if not cart:
+        if st.button("Go to Login"):
+            st.session_state.page = "Login"
+            st.rerun()
 
+        return
+
+    response = get_cart()
+
+    if not response.get("success"):
+        st.error(response.get("error", "Unable to load cart."))
+        return
+
+    cart_data = response.get("data") or {}
+
+    items = cart_data.get("items", [])
+
+    if not items:
         st.info("Your shopping cart is empty.")
 
-        if st.button("Continue Shopping"):
-
+        if st.button("Explore Products"):
             st.session_state.page = "Products"
-
             st.rerun()
 
         return
 
     total_amount = 0
 
-    # Display cart items
-    for index, item in enumerate(cart):
+    for item in items:
 
-        col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+        product_id = item.get("product_id")
+        product_name = item.get("product_name", "Product")
+        price = float(item.get("unit_price", 0))
+        quantity = int(item.get("quantity", 1))
+        subtotal = float(item.get("subtotal", price * quantity))
 
-        with col1:
+        total_amount += subtotal
 
-            st.write(f"**{item['name']}**")
+        with st.container(border=True):
 
-        with col2:
+            col1, col2, col3 = st.columns([3, 2, 2])
 
-            st.write(f"₹{item['price']:,.2f}")
+            with col1:
+                st.subheader(product_name)
+                st.write(f"Price: ₹{price:,.2f}")
 
-        with col3:
+            with col2:
 
-            st.write(f"Qty: {item['quantity']}")
+                new_quantity = st.number_input(
+                    "Quantity",
+                    min_value=1,
+                    value=quantity,
+                    step=1,
+                    key=f"quantity_{product_id}"
+                )
 
-        with col4:
+                if new_quantity != quantity:
 
-            if st.button(
-                "Remove",
-                key=f"remove_{item['id']}"
-            ):
+                    if st.button(
+                        "Update",
+                        key=f"update_{product_id}"
+                    ):
 
-                cart.pop(index)
+                        result = update_cart_item(
+                            product_id,
+                            new_quantity
+                        )
 
-                st.rerun()
+                        if result.get("success"):
+                            st.rerun()
+                        else:
+                            st.error(
+                                result.get("error", "Update failed.")
+                            )
 
-        total_amount += item["price"] * item["quantity"]
+            with col3:
 
-    st.markdown("---")
+                st.write(f"Subtotal: ₹{subtotal:,.2f}")
 
-    st.subheader(
-        f"Total Amount: ₹{total_amount:,.2f}"
-    )
+                if st.button(
+                    "Remove",
+                    key=f"remove_{product_id}"
+                ):
 
-    # Continue shopping
-    if st.button(
-        "Continue Shopping",
-        use_container_width=True
-    ):
+                    result = remove_from_cart(product_id)
 
-        st.session_state.page = "Products"
+                    if result.get("success"):
+                        st.rerun()
+                    else:
+                        st.error(
+                            result.get("error", "Remove failed.")
+                        )
 
-        st.rerun()
+    st.divider()
 
-    # Checkout
-    if st.button(
-        "Proceed to Checkout",
-        use_container_width=True
-    ):
+    st.subheader(f"Total: ₹{total_amount:,.2f}")
 
-        if not is_authenticated():
+    if st.button("Proceed to Checkout", use_container_width=True):
 
-            st.warning(
-                "Please log in before proceeding to checkout."
-            )
+        result = checkout()
 
-            st.session_state.page = "Login"
+        if result.get("success"):
 
+            st.success("Order placed successfully! 🎉")
+
+            st.session_state.page = "Orders"
             st.rerun()
 
         else:
-
-            st.info(
-                "Checkout functionality will be implemented next."
+            st.error(
+                result.get("error", "Checkout failed.")
             )
 
 
 # ==========================================
-# ORDERS PAGE
+# ORDER HISTORY PAGE
 # ==========================================
 
 def render_orders_page():
 
     st.title("📦 My Orders")
 
-    # Check authentication
     if not is_authenticated():
 
         st.warning("Please log in to view your orders.")
 
-        if st.button("Login Now"):
-
+        if st.button("Login"):
             st.session_state.page = "Login"
-
             st.rerun()
 
         return
 
-    st.info(
-        "Order management will be implemented in the next phase."
-    )
+    response = get_orders()
 
+    if not response.get("success"):
+        st.error(
+            response.get("error", "Unable to load orders.")
+        )
+        return
 
-# ==========================================
-# PAGE ROUTING
-# ==========================================
+    orders = response.get("data") or []
 
-def render_page():
+    if not orders:
+        st.info("You haven't placed any orders yet.")
+        return
 
-    """
-    Display the page selected by the user.
-    """
+    for order in orders:
 
-    current_page = st.session_state.page
+        order_id = order.get("id", order.get("order_id", "N/A"))
 
-    # HOME
-    if current_page == "Home":
+        with st.expander(f"Order #{order_id}"):
 
-        render_home_page()
+            st.write(
+                f"**Status:** {order.get('status', 'N/A')}"
+            )
 
-    # PRODUCTS
-    elif current_page == "Products":
+            st.write(
+                f"**Total:** ₹{float(order.get('total_amount', 0)):,.2f}"
+            )
 
-        render_products_page()
+            items = order.get("items", [])
 
-    # LOGIN
-    elif current_page == "Login":
+            if items:
 
-        render_login_page()
+                st.write("### Ordered Products")
 
-    # REGISTER
-    elif current_page == "Register":
+                for item in items:
 
-        render_register_page()
+                    product_name = item.get(
+                        "product_name",
+                        item.get("product", {}).get("name", "Product")
+                    )
 
-    # CART
-    elif current_page == "Cart":
-
-        render_cart_page()
-
-    # ORDERS
-    elif current_page == "Orders":
-
-        render_orders_page()
-
-    # INVALID PAGE
-    else:
-
-        st.error("Page not found.")
-
-        if st.button("Return Home"):
-
-            st.session_state.page = "Home"
-
-            st.rerun()
+                    st.write(
+                        f"- {product_name} | "
+                        f"Quantity: {item.get('quantity', 0)}"
+                    )
 
 
 # ==========================================
@@ -489,27 +301,45 @@ def render_page():
 
 def main():
 
-    """
-    Main entry point of Chaitu Store.
-    """
+    initialize_session_state()
 
-    # Initialize session state
-    initialize_app()
-
-    # Load custom CSS
     load_styles()
 
-    # Render navigation bar
     render_navbar()
 
-    # Render selected page
-    render_page()
+    st.divider()
 
+    current_page = st.session_state.get("page", "Home")
 
-# ==========================================
-# APPLICATION EXECUTION
-# ==========================================
+    if current_page == "Home":
+
+        render_home_page()
+
+    elif current_page == "Products":
+
+        render_products_page()
+
+    elif current_page == "Login":
+
+        render_login_page()
+
+    elif current_page == "Register":
+
+        render_register_page()
+
+    elif current_page == "Cart":
+
+        render_cart_page()
+
+    elif current_page == "Orders":
+
+        render_orders_page()
+
+    else:
+
+        st.session_state.page = "Home"
+        st.rerun()
+
 
 if __name__ == "__main__":
-
     main()

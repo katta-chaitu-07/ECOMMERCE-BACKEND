@@ -4,7 +4,7 @@ from APP.database.connection import Base, engine
 from APP.models.product import Product
 from APP.models.user import User
 from APP.models.cart import Cart
-from APP.models.CartItem import CartItem
+from APP.models.cart_item import CartItem
 from APP.models.order import Order
 from APP.models.OrderItem import OrderItem
 

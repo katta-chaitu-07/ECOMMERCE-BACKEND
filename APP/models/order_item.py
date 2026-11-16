@@ -1,0 +1,58 @@
+from sqlalchemy import (
+    Column,
+    Integer,
+    ForeignKey,
+    Numeric,
+    CheckConstraint
+)
+
+from sqlalchemy.orm import relationship
+
+from APP.database.connection import Base
+
+
+class OrderItem(Base):
+
+    __tablename__ = "order_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    order_id = Column(
+        Integer,
+        ForeignKey("orders.id"),
+        nullable=False
+    )
+
+    product_id = Column(
+        Integer,
+        ForeignKey("products.id"),
+        nullable=False
+    )
+
+    quantity = Column(Integer, nullable=False)
+
+    unit_price = Column(Numeric(10, 2), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "quantity > 0",
+            name="check_order_item_quantity"
+        ),
+
+        CheckConstraint(
+            "unit_price >= 0",
+            name="check_order_item_price"
+        ),
+    )
+
+    # OrderItem belongs to one order
+    order = relationship(
+        "Order",
+        back_populates="items"
+    )
+
+    # OrderItem refers to one product
+    product = relationship(
+        "Product",
+        back_populates="order_items"
+    )
