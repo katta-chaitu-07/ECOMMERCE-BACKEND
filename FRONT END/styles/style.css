@@ -1,0 +1,53 @@
+﻿/* ==========================================
+   CHAITU STORE - GLOBAL STYLES
+========================================== */
+
+.stApp {
+    background-color: #F8FAFC;
+    color: #1E293B;
+    font-family: Arial, sans-serif;
+}
+
+.block-container {
+    max-width: 1400px;
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+}
+
+h1, h2, h3 {
+    color: #0F172A;
+    font-weight: 700;
+}
+
+.stButton > button {
+    background-color: #2563EB;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-weight: 600;
+}
+
+.stButton > button:hover {
+    background-color: #1D4ED8;
+    color: #FFFFFF;
+}
+
+.stTextInput input,
+.stNumberInput input {
+    border-radius: 8px;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    border-radius: 14px;
+    border-color: #E2E8F0;
+}
+
+hr {
+    border-color: #E2E8F0;
+}
+
+#MainMenu,
+footer {
+    visibility: hidden;
+}
