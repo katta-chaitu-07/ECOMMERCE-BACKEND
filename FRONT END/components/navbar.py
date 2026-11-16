@@ -1,148 +1,74 @@
-# ============================================
-# CHAITU STORE - NAVIGATION BAR
-# ============================================
 
 import streamlit as st
 
-# Import logout function
-from services.auth import logout
+from services.auth import is_authenticated, logout
+
+
+def navigate_to(page):
+    st.session_state.page = page
+    st.rerun()
 
 
 def render_navbar():
 
-    # ----------------------------------------
-    # CHECK AUTHENTICATION STATUS
-    # ----------------------------------------
-
-    is_logged_in = st.session_state.get("access_token") is not None
-
-    # ----------------------------------------
-    # CREATE NAVIGATION COLUMNS
-    # ----------------------------------------
-
-    col1, col2, col3 = st.columns([2.5, 5, 2.5])
-
-    selected_page = None
-
-    # ----------------------------------------
-    # STORE LOGO
-    # ----------------------------------------
-
-    with col1:
-
-        st.markdown(
-            """
-            <h2 style="
-                color:#2563EB;
-                margin-top:5px;
-                font-size:25px;
-                font-weight:800;
-            ">
-                🛍️ CHAITU STORE
-            </h2>
-            """,
-            unsafe_allow_html=True
-        )
-
-    # ----------------------------------------
-    # NAVIGATION BUTTONS
-    # ----------------------------------------
-
-    with col2:
-
-        if is_logged_in:
-
-            nav1, nav2, nav3, nav4 = st.columns(4)
-
-            navigation = {
-                "Home": nav1,
-                "Products": nav2,
-                "Cart": nav3,
-                "Orders": nav4
-            }
-
-        else:
-
-            nav1, nav2, nav3 = st.columns(3)
-
-            navigation = {
-                "Home": nav1,
-                "Products": nav2,
-                "Cart": nav3
-            }
-
-        for page, column in navigation.items():
-
-            with column:
-
-                if st.button(
-                    page,
-                    key=f"nav_{page}",
-                    use_container_width=True
-                ):
-
-                    selected_page = page
-
-    # ----------------------------------------
-    # AUTHENTICATION SECTION
-    # ----------------------------------------
-
-    with col3:
-
-        if is_logged_in:
-
-            user = st.session_state.get("user") or {}
-
-            user_name = user.get("name", "Account")
-
-            st.caption(f"👤 {user_name}")
-
-            if st.button(
-                "Logout",
-                key="logout_button",
-                use_container_width=True
-            ):
-
-                logout()
-
-        else:
-
-            auth_col1, auth_col2 = st.columns(2)
-
-            with auth_col1:
-
-                if st.button(
-                    "Login",
-                    key="login_button",
-                    use_container_width=True
-                ):
-
-                    selected_page = "Login"
-
-            with auth_col2:
-
-                if st.button(
-                    "Register",
-                    key="register_button",
-                    use_container_width=True
-                ):
-
-                    selected_page = "Register"
-
-    # ----------------------------------------
-    # UPDATE CURRENT PAGE
-    # ----------------------------------------
-
-    if selected_page:
-
-        st.session_state.page = selected_page
-
-        st.rerun()
-
-    # ----------------------------------------
-    # NAVIGATION DIVIDER
-    # ----------------------------------------
+    # Store branding
+    st.title("🛍️ CHAITU STORE")
+    st.caption("YOUR STYLE. YOUR CHOICE. YOUR STORE.")
 
     st.divider()
 
-    return st.session_state.page
+    # Navigation menu
+    if is_authenticated():
+
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
+
+        with col1:
+            if st.button("🏠 Home", use_container_width=True):
+                navigate_to("Home")
+
+        with col2:
+            if st.button("🛍️ Products", use_container_width=True):
+                navigate_to("Products")
+
+        with col3:
+            if st.button("🛒 Cart", use_container_width=True):
+                navigate_to("Cart")
+
+        with col4:
+            if st.button("📦 Orders", use_container_width=True):
+                navigate_to("Orders")
+
+        with col5:
+            if st.button("👤 Account", use_container_width=True):
+                st.session_state.page = "Home"
+                st.rerun()
+
+        with col6:
+            if st.button("Logout", use_container_width=True):
+                logout()
+
+    else:
+
+        col1, col2, col3, col4, col5 = st.columns(5)
+
+        with col1:
+            if st.button("🏠 Home", use_container_width=True):
+                navigate_to("Home")
+
+        with col2:
+            if st.button("🛍️ Products", use_container_width=True):
+                navigate_to("Products")
+
+        with col3:
+            if st.button("🔐 Login", use_container_width=True):
+                navigate_to("Login")
+
+        with col4:
+            if st.button("📝 Register", use_container_width=True):
+                navigate_to("Register")
+
+        with col5:
+            if st.button("🛒 Cart", use_container_width=True):
+                navigate_to("Cart")
+
+    st.divider()
