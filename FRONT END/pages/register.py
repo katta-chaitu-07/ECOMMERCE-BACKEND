@@ -1,133 +1,130 @@
+
 import streamlit as st
 
-# Import registration service
 from services.auth import register
 
 
-# ==========================================
-# REGISTRATION PAGE
-# ==========================================
-
 def render_register_page():
 
-    # Page heading
-    st.title("👤 Create Your Account")
+    # ==========================================
+    # PAGE HEADER
+    # ==========================================
 
-    st.write("Join Chaitu Store and start shopping.")
+    st.title("📝 Create Your Account")
 
-    st.markdown("---")
+    st.caption(
+        "Join Chaitu Store and start your shopping journey."
+    )
 
-    # Registration form
-    with st.form("register_form"):
+    st.divider()
 
-        # Full name
-        name = st.text_input(
-            "Full Name",
-            placeholder="Enter your full name"
-        )
+    # ==========================================
+    # REGISTRATION FORM
+    # ==========================================
 
-        # Email address
-        email = st.text_input(
-            "Email Address",
-            placeholder="Enter your email"
-        )
+    col1, col2, col3 = st.columns([1, 2, 1])
 
-        # Password
-        password = st.text_input(
-            "Password",
-            type="password",
-            placeholder="Create a password"
-        )
+    with col2:
 
-        # Confirm password
-        confirm_password = st.text_input(
-            "Confirm Password",
-            type="password",
-            placeholder="Re-enter your password"
-        )
+        with st.container(border=True):
 
-        # Submit button
-        submitted = st.form_submit_button(
-            "Create Account",
-            use_container_width=True
-        )
+            st.subheader("Create a New Account")
 
-        # ======================================
-        # REGISTRATION VALIDATION
-        # ======================================
+            with st.form("registration_form"):
 
-        if submitted:
-
-            # Check empty fields
-            if not name.strip() or not email.strip() or not password:
-
-                st.error("Please fill in all required fields.")
-
-            # Basic email validation
-            elif (
-                "@" not in email
-                or "." not in email.split("@")[-1]
-            ):
-
-                st.error("Please enter a valid email address.")
-
-            # Check password confirmation
-            elif password != confirm_password:
-
-                st.error("Passwords do not match.")
-
-            # Check password length
-            elif len(password) < 8:
-
-                st.error(
-                    "Password must contain at least 8 characters."
+                name = st.text_input(
+                    "Full Name",
+                    placeholder="Enter your full name"
                 )
 
-            else:
+                email = st.text_input(
+                    "Email Address",
+                    placeholder="example@gmail.com"
+                )
 
-                # Connect to FastAPI registration endpoint
-                with st.spinner("Creating your account..."):
+                password = st.text_input(
+                    "Password",
+                    type="password",
+                    placeholder="Create a password"
+                )
 
-                    response = register(
-                        name=name.strip(),
-                        email=email.strip(),
-                        password=password
-                    )
+                confirm_password = st.text_input(
+                    "Confirm Password",
+                    type="password",
+                    placeholder="Re-enter your password"
+                )
 
-                # Check backend response
-                if response.get("success"):
+                submitted = st.form_submit_button(
+                    "Create Account",
+                    type="primary",
+                    use_container_width=True
+                )
 
-                    st.success(
-                        "Registration successful! Your account has been created."
-                    )
+                if submitted:
 
-                    # Store registration status
-                    st.session_state.registration_success = True
+                    # Validate input fields
 
-                else:
+                    if not name.strip() or not email.strip() or not password:
+                        st.warning("Please fill in all fields.")
 
-                    st.error(
-                        response.get("error", "Registration failed.")
-                    )
+                    elif "@" not in email or "." not in email:
+                        st.warning("Please enter a valid email address.")
 
-    # ======================================
-    # LOGIN NAVIGATION
-    # ======================================
+                    elif len(password) < 8:
+                        st.warning(
+                            "Password must contain at least 8 characters."
+                        )
 
-    if st.session_state.get("registration_success", False):
+                    elif password != confirm_password:
+                        st.error("Passwords do not match.")
 
-        if st.button("Continue to Login"):
+                    else:
 
-            st.session_state.registration_success = False
+                        # Send registration details to backend
 
-            st.session_state.page = "Login"
+                        response = register(
+                            name=name.strip(),
+                            email=email.strip(),
+                            password=password
+                        )
 
-            st.rerun()
+                        if response.get("success"):
 
-    else:
+                            st.success(
+                                "Account created successfully!"
+                            )
 
-        if st.button("Already have an account? Login"):
+                            st.session_state.page = "Login"
 
-            st.session_state.page = "Login"
+                            st.rerun()
 
-            st.rerun()
+                        else:
+
+                            st.error(
+                                response.get(
+                                    "error",
+                                    "Registration failed. Please try again."
+                                )
+                            )
+
+            st.divider()
+
+            st.write("Already have an account?")
+
+            if st.button(
+                "Login Instead",
+                use_container_width=True
+            ):
+
+                st.session_state.page = "Login"
+                st.rerun()
+
+    # ==========================================
+    # FOOTER
+    # ==========================================
+
+    st.divider()
+
+    st.caption(
+        "Chaitu Store | Your Style. Your Choice. Your Store."
+    )
