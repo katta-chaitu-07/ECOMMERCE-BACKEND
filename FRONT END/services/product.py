@@ -1,4 +1,4 @@
-# Import product API function
+
 from services.api import get_products as api_get_products
 
 
@@ -7,46 +7,78 @@ from services.api import get_products as api_get_products
 # ==========================================
 
 def get_all_products():
-    """
-    Fetch all products from the FastAPI backend.
-    """
+    """Fetch and validate products from FastAPI."""
 
     try:
-
-        # Request products from FastAPI
         response = api_get_products()
 
-        # Check whether API returned an error
-        if isinstance(response, dict) and "error" in response:
+        # Case 1: Central API service returns a dictionary
+        if isinstance(response, dict):
 
+            if not response.get("success", False):
+                return {
+                    "success": False,
+                    "data": [],
+                    "error": response.get("error") or "Unable to fetch products."
+                }
+
+            products = response.get("data")
+
+        # Case 2: API function returns a raw list
+        elif isinstance(response, list):
+            products = response
+
+        else:
             return {
                 "success": False,
                 "data": [],
-                "error": response["error"]
+                "error": "Unexpected response from product API."
             }
 
-        # Validate API response
-        if not isinstance(response, list):
-
+        if not isinstance(products, list):
             return {
                 "success": False,
                 "data": [],
-                "error": "Invalid product response from server."
+                "error": "Product data is not a valid list."
             }
 
-        # Return successfully retrieved products
+        valid_products = []
+
+        for product in products:
+
+            if not isinstance(product, dict):
+                continue
+
+            if not all(
+                key in product
+                for key in ("id", "name", "price", "quantity")
+            ):
+                continue
+
+            try:
+                clean_product = {
+                    "id": int(product["id"]),
+                    "name": str(product["name"]),
+                    "price": float(product["price"]),
+                    "quantity": int(product["quantity"])
+                }
+
+                valid_products.append(clean_product)
+
+            except (TypeError, ValueError):
+                continue
+
         return {
             "success": True,
-            "data": response,
+            "data": valid_products,
             "error": None
         }
 
-    except Exception as e:
-
+    except Exception as error:
         return {
             "success": False,
             "data": [],
-            "error": str(e)
+            "error": str(error)
         }
 
 
@@ -55,19 +87,13 @@ def get_all_products():
 # ==========================================
 
 def get_product_by_id(product_id):
-    """
-    Retrieve a specific product using its ID.
-    """
 
     response = get_all_products()
 
-    # Handle API failure
     if not response["success"]:
         return None
 
-    # Search for the requested product
     for product in response["data"]:
-
         if product["id"] == product_id:
             return product
 
@@ -79,9 +105,6 @@ def get_product_by_id(product_id):
 # ==========================================
 
 def search_products(search_query):
-    """
-    Search products based on their names.
-    """
 
     response = get_all_products()
 
@@ -90,23 +113,15 @@ def search_products(search_query):
 
     products = response["data"]
 
-    # Return all products if search is empty
     if not search_query or not search_query.strip():
         return products
 
-    # Normalize search query
     search_query = search_query.strip().lower()
 
-    # Filter products by name
-    filtered_products = [
-
+    return [
         product for product in products
-
         if search_query in product["name"].lower()
-
     ]
-
-    return filtered_products
 
 
 # ==========================================
@@ -114,29 +129,32 @@ def search_products(search_query):
 # ==========================================
 
 def filter_products(min_price=0, max_price=None):
-    """
-    Filter products based on their prices.
-    """
 
     response = get_all_products()
 
     if not response["success"]:
         return []
 
-    products = response["data"]
+    try:
+        min_price = float(min_price)
 
-    # Filter products using price range
-    filtered_products = [
+        if max_price is not None:
+            max_price = float(max_price)
 
-        product for product in products
+    except (TypeError, ValueError):
+        return []
 
+    if min_price < 0:
+        return []
+
+    if max_price is not None and max_price < min_price:
+        return []
+
+    return [
+        product for product in response["data"]
         if product["price"] >= min_price
-
         and (
             max_price is None
             or product["price"] <= max_price
         )
-
     ]
-
-    return filtered_products
