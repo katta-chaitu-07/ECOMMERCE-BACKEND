@@ -9,6 +9,28 @@ from services.api import (
 
 
 # ==========================================
+# AUTHENTICATION SESSION HELPERS
+# ==========================================
+
+def get_access_token():
+    """Get the JWT token from Streamlit session state."""
+
+    return (
+        st.session_state.get("access_token")
+        or st.session_state.get("token")
+    )
+
+
+def clear_auth_session():
+    """Clear all authentication-related session data."""
+
+    st.session_state.access_token = None
+    st.session_state.token = None
+    st.session_state.user = None
+    st.session_state.authenticated = False
+
+
+# ==========================================
 # USER REGISTRATION
 # ==========================================
 
@@ -16,8 +38,8 @@ def register(name, email, password):
     """Register a new user through FastAPI."""
 
     return api_register_user(
-        name=name,
-        email=email,
+        name=name.strip(),
+        email=email.strip(),
         password=password
     )
 
@@ -29,8 +51,11 @@ def register(name, email, password):
 def login(email, password):
     """Authenticate user and store JWT token."""
 
+    # Remove any previous login before attempting a new one
+    clear_auth_session()
+
     response = api_login_user(
-        email=email,
+        email=email.strip(),
         password=password
     )
 
@@ -48,29 +73,48 @@ def login(email, password):
             "status_code": response.get("status_code")
         }
 
-    # Save JWT token
+    # Save the JWT token
     st.session_state.access_token = access_token
+    st.session_state.token = access_token
 
-    # Retrieve logged-in user details
+    # Retrieve authenticated user details
     user_response = api_get_current_user(access_token)
 
     if not user_response.get("success"):
 
-        st.session_state.access_token = None
-        st.session_state.user = None
-        st.session_state.authenticated = False
+        clear_auth_session()
 
-        return user_response
+        return {
+            "success": False,
+            "data": None,
+            "error": user_response.get(
+                "error",
+                "Unable to retrieve user details."
+            ),
+            "status_code": user_response.get("status_code")
+        }
 
     # Save user information
-    st.session_state.user = user_response.get("data")
+    user = user_response.get("data")
+
+    if not isinstance(user, dict):
+        clear_auth_session()
+
+        return {
+            "success": False,
+            "data": None,
+            "error": "Invalid user information received.",
+            "status_code": user_response.get("status_code")
+        }
+
+    st.session_state.user = user
     st.session_state.authenticated = True
 
     return {
         "success": True,
         "data": {
             "access_token": access_token,
-            "user": st.session_state.user
+            "user": user
         },
         "error": None,
         "status_code": response.get("status_code")
@@ -84,24 +128,28 @@ def login(email, password):
 def get_logged_in_user():
     """Retrieve authenticated user's information."""
 
-    access_token = st.session_state.get("access_token")
+    access_token = get_access_token()
 
     if not access_token:
+        clear_auth_session()
         return None
 
     response = api_get_current_user(access_token)
 
     if response.get("success"):
 
-        st.session_state.user = response.get("data")
-        st.session_state.authenticated = True
+        user = response.get("data")
 
-        return st.session_state.user
+        if isinstance(user, dict):
+            st.session_state.access_token = access_token
+            st.session_state.token = access_token
+            st.session_state.user = user
+            st.session_state.authenticated = True
 
-    # Clear invalid or expired token
-    st.session_state.access_token = None
-    st.session_state.user = None
-    st.session_state.authenticated = False
+            return user
+
+    # Clear expired or invalid authentication
+    clear_auth_session()
 
     return None
 
@@ -111,10 +159,11 @@ def get_logged_in_user():
 # ==========================================
 
 def is_authenticated():
-    """Check whether a valid user session exists."""
+    """Check whether the user has an authenticated session."""
 
     return (
-        bool(st.session_state.get("access_token"))
+        bool(get_access_token())
+        and st.session_state.get("authenticated", False)
         and st.session_state.get("user") is not None
     )
 
@@ -124,11 +173,13 @@ def is_authenticated():
 # ==========================================
 
 def logout():
-    """Clear authentication and return to homepage."""
+    """Log out the user and return to homepage."""
 
-    st.session_state.access_token = None
-    st.session_state.user = None
-    st.session_state.authenticated = False
+    clear_auth_session()
+
+    # Clear selected order and checkout confirmation
+    st.session_state.pop("selected_order_id", None)
+    st.session_state.pop("checkout_success_order", None)
 
     st.session_state.page = "Home"
 

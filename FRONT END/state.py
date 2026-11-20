@@ -1,3 +1,4 @@
+
 # ============================================
 # CHAITU STORE - SESSION STATE MANAGEMENT
 # ============================================
@@ -30,9 +31,21 @@ def initialize_session_state():
     if "access_token" not in st.session_state:
         st.session_state.access_token = None
 
+    # Backward compatibility with services
+    if "token" not in st.session_state:
+        st.session_state.token = None
+
 
     # ----------------------------------------
-    # 4. Logged-in User Information
+    # 4. Authentication Status
+    # ----------------------------------------
+
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+
+
+    # ----------------------------------------
+    # 5. Logged-in User Information
     # ----------------------------------------
 
     if "user" not in st.session_state:
@@ -40,7 +53,7 @@ def initialize_session_state():
 
 
     # ----------------------------------------
-    # 5. Registration Status
+    # 6. Registration Status
     # ----------------------------------------
 
     if "registration_success" not in st.session_state:
@@ -48,7 +61,7 @@ def initialize_session_state():
 
 
     # ----------------------------------------
-    # 6. Product Search
+    # 7. Product Search
     # ----------------------------------------
 
     if "search_query" not in st.session_state:
@@ -56,7 +69,7 @@ def initialize_session_state():
 
 
     # ----------------------------------------
-    # 7. Product Category
+    # 8. Product Category
     # ----------------------------------------
 
     if "selected_category" not in st.session_state:
@@ -64,20 +77,35 @@ def initialize_session_state():
 
 
     # ----------------------------------------
-    # 8. Price Filter
+    # 9. Price Filters
     # ----------------------------------------
 
     if "min_price" not in st.session_state:
         st.session_state.min_price = 0
-
 
     if "max_price" not in st.session_state:
         st.session_state.max_price = None
 
 
     # ----------------------------------------
-    # 9. Selected Product
+    # 10. Selected Product
     # ----------------------------------------
 
     if "selected_product" not in st.session_state:
         st.session_state.selected_product = None
+
+
+    # ----------------------------------------
+    # 11. Selected Order
+    # ----------------------------------------
+
+    if "selected_order_id" not in st.session_state:
+        st.session_state.selected_order_id = None
+
+
+    # ----------------------------------------
+    # 12. Checkout Confirmation
+    # ----------------------------------------
+
+    if "checkout_success_order" not in st.session_state:
+        st.session_state.checkout_success_order = None
