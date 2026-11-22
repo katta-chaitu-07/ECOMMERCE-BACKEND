@@ -1,8 +1,10 @@
 
 import requests
 
-API_URL = "http://127.0.0.1:8000"
-TIMEOUT = 10
+from config import BASE_URL
+
+API_URL = BASE_URL
+TIMEOUT = 30
 
 
 # ==========================================
@@ -19,7 +21,6 @@ def make_request(method, endpoint, data=None, token=None, params=None):
         headers["Authorization"] = f"Bearer {token}"
 
     try:
-
         response = requests.request(
             method=method,
             url=url,
@@ -58,16 +59,14 @@ def make_request(method, endpoint, data=None, token=None, params=None):
         }
 
     except requests.exceptions.ConnectionError:
-
         return {
             "success": False,
             "data": None,
-            "error": "Cannot connect to backend. Start FastAPI first.",
+            "error": "Cannot connect to deployed backend. Check backend URL and deployment.",
             "status_code": None
         }
 
     except requests.exceptions.Timeout:
-
         return {
             "success": False,
             "data": None,
@@ -76,7 +75,6 @@ def make_request(method, endpoint, data=None, token=None, params=None):
         }
 
     except requests.exceptions.RequestException as error:
-
         return {
             "success": False,
             "data": None,
@@ -90,7 +88,6 @@ def make_request(method, endpoint, data=None, token=None, params=None):
 # ==========================================
 
 def register_user(name, email, password):
-
     return make_request(
         method="POST",
         endpoint="/users/register",
@@ -107,7 +104,6 @@ def register_user(name, email, password):
 # ==========================================
 
 def login_user(email, password):
-
     return make_request(
         method="POST",
         endpoint="/users/login",
@@ -123,7 +119,6 @@ def login_user(email, password):
 # ==========================================
 
 def get_current_user(token):
-
     return make_request(
         method="GET",
         endpoint="/users/me",
@@ -136,7 +131,6 @@ def get_current_user(token):
 # ==========================================
 
 def get_products():
-
     return make_request(
         method="GET",
         endpoint="/products/"
@@ -148,7 +142,6 @@ def get_products():
 # ==========================================
 
 def get_product(product_id):
-
     return make_request(
         method="GET",
         endpoint=f"/products/{product_id}"
@@ -160,7 +153,6 @@ def get_product(product_id):
 # ==========================================
 
 def add_cart_product(product_id, quantity, token):
-
     return make_request(
         method="POST",
         endpoint=f"/cart/add/{product_id}",
@@ -174,7 +166,6 @@ def add_cart_product(product_id, quantity, token):
 # ==========================================
 
 def get_cart(token):
-
     return make_request(
         method="GET",
         endpoint="/cart/",
@@ -187,7 +178,6 @@ def get_cart(token):
 # ==========================================
 
 def checkout_order(token):
-
     return make_request(
         method="POST",
         endpoint="/orders/checkout",
@@ -200,7 +190,6 @@ def checkout_order(token):
 # ==========================================
 
 def get_customer_orders(token):
-
     return make_request(
         method="GET",
         endpoint="/orders/",
