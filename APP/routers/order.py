@@ -16,19 +16,22 @@ from APP.models.order import Order
 from APP.models.order_item import OrderItem
 
 
-router = APIRouter(prefix="/orders", tags=["Orders"])
+router = APIRouter(
+    prefix="/orders",
+    tags=["Orders"]
+)
 
 
-# ==========================================
-# CHECKOUT
-# ==========================================
+# --------------------------------------------------
+# 1. CHECKOUT - Create a new order from the cart
+# --------------------------------------------------
 
 @router.post("/checkout", status_code=status.HTTP_201_CREATED)
 def checkout(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Find the customer's cart
+    # Get the logged-in user's cart and its products
     cart = (
         db.query(Cart)
         .options(
@@ -38,17 +41,19 @@ def checkout(
         .first()
     )
 
+    # Check whether the cart exists
     if cart is None or not cart.items:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Your cart is empty."
         )
 
-    # Validate stock and calculate the total
     order_items_data = []
     total_amount = Decimal("0.00")
 
+    # Validate products and calculate the total
     for cart_item in cart.items:
+
         product = cart_item.product
 
         if product is None:
@@ -66,15 +71,21 @@ def checkout(
         if cart_item.quantity > product.quantity:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Insufficient stock for {product.name}. Available: {product.quantity}."
+                detail=(
+                    f"Insufficient stock for {product.name}. "
+                    f"Available: {product.quantity}."
+                )
             )
 
-        unit_price = Decimal(str(product.price)).quantize(
+        unit_price = Decimal(
+            str(product.price)
+        ).quantize(
             Decimal("0.01"),
             rounding=ROUND_HALF_UP
         )
 
         subtotal = unit_price * cart_item.quantity
+
         total_amount += subtotal
 
         order_items_data.append({
@@ -88,8 +99,8 @@ def checkout(
         rounding=ROUND_HALF_UP
     )
 
-    # Create the order and update stock in one transaction
     try:
+        # Create the main order
         new_order = Order(
             user_id=current_user.id,
             total_amount=total_amount,
@@ -97,11 +108,15 @@ def checkout(
         )
 
         db.add(new_order)
+
+        # Generate the order ID before creating order items
         db.flush()
 
         response_items = []
 
+        # Create individual order items
         for item_data in order_items_data:
+
             product = item_data["product"]
             quantity = item_data["quantity"]
             unit_price = item_data["unit_price"]
@@ -115,7 +130,7 @@ def checkout(
 
             db.add(order_item)
 
-            # Reduce available stock
+            # Reduce product stock
             product.quantity -= quantity
 
             response_items.append({
@@ -126,11 +141,13 @@ def checkout(
                 "subtotal": float(unit_price * quantity)
             })
 
-        # Remove purchased items from the cart
+        # Empty the cart after successful order creation
         for cart_item in list(cart.items):
             db.delete(cart_item)
 
+        # Save everything in the database
         db.commit()
+
         db.refresh(new_order)
 
         return {
@@ -143,21 +160,23 @@ def checkout(
 
     except SQLAlchemyError:
         db.rollback()
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Checkout failed. Please try again."
         )
 
 
-# ==========================================
-# VIEW MY ORDERS
-# ==========================================
+# --------------------------------------------------
+# 2. GET MY ORDERS - Retrieve logged-in user's orders
+# --------------------------------------------------
 
 @router.get("/")
 def get_my_orders(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+
     orders = (
         db.query(Order)
         .filter(Order.user_id == current_user.id)
@@ -179,9 +198,9 @@ def get_my_orders(
     ]
 
 
-# ==========================================
-# VIEW A SINGLE ORDER
-# ==========================================
+# --------------------------------------------------
+# 3. GET ORDER BY ID - Retrieve one specific order
+# --------------------------------------------------
 
 @router.get("/{order_id}")
 def get_order(
@@ -189,6 +208,7 @@ def get_order(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+
     order = (
         db.query(Order)
         .options(
@@ -210,14 +230,18 @@ def get_order(
     items = []
 
     for item in order.items:
+
         items.append({
             "product_id": item.product_id,
             "product_name": (
-                item.product.name if item.product else "Unavailable product"
+                item.product.name
+                if item.product else "Unavailable product"
             ),
             "quantity": item.quantity,
             "unit_price": float(item.unit_price),
-            "subtotal": float(item.unit_price * item.quantity)
+            "subtotal": float(
+                item.unit_price * item.quantity
+            )
         })
 
     return {

@@ -1,3 +1,4 @@
+
 from sqlalchemy import Column, Integer, String, Float
 from sqlalchemy.orm import relationship
 
@@ -15,6 +16,9 @@ class Product(Base):
     price = Column(Float, nullable=False)
 
     quantity = Column(Integer, nullable=False)
+
+    # Product image URL
+    image_url = Column(String, nullable=True)
 
     # Product can appear in multiple carts
     cart_items = relationship(

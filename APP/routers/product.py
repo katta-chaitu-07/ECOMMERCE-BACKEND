@@ -1,8 +1,11 @@
 
-from fastapi import APIRouter, Body, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 
-from APP.schemas.Product import ProductCreate
+from APP.schemas.Product import (
+    ProductCreate,
+    ProductUpdate
+)
 from APP.models.product import Product
 from APP.database.dependencies import get_db
 
@@ -13,19 +16,46 @@ router = APIRouter(
 )
 
 
+# ----------------------------------------
+# Helper: Format Product Response
+# ----------------------------------------
+
+def format_product(product):
+
+    return {
+        "id": product.id,
+        "name": product.name,
+        "price": product.price,
+        "quantity": product.quantity,
+        "image_url": product.image_url
+    }
+
+
+# ----------------------------------------
 # GET - Get all products
+# ----------------------------------------
+
 @router.get("/")
 def get_products(db: Session = Depends(get_db)):
+
     products = db.query(Product).all()
-    return products
+
+    return [
+        format_product(product)
+        for product in products
+    ]
 
 
-# GET - Get a product by ID
+# ----------------------------------------
+# GET - Get product by ID
+# ----------------------------------------
+
 @router.get("/{product_id}")
 def get_product(
     product_id: int,
     db: Session = Depends(get_db)
 ):
+
     product = db.query(Product).filter(
         Product.id == product_id
     ).first()
@@ -36,16 +66,19 @@ def get_product(
             detail="Product not found"
         )
 
-    return product
+    return format_product(product)
 
 
+# ----------------------------------------
 # POST - Create a new product
+# ----------------------------------------
+
 @router.post("/")
 def create_product(
     product: ProductCreate,
     db: Session = Depends(get_db)
 ):
-    # Check whether the product ID already exists
+
     existing_product = db.query(Product).filter(
         Product.id == product.id
     ).first()
@@ -56,12 +89,12 @@ def create_product(
             detail="Product ID already exists"
         )
 
-    # Create a new database object
     new_product = Product(
         id=product.id,
         name=product.name,
         price=product.price,
-        quantity=product.quantity
+        quantity=product.quantity,
+        image_url=product.image_url
     )
 
     db.add(new_product)
@@ -69,24 +102,22 @@ def create_product(
     db.refresh(new_product)
 
     return {
-        "message": "Product is successfully added",
-        "product": {
-            "id": new_product.id,
-            "name": new_product.name,
-            "price": new_product.price,
-            "quantity": new_product.quantity
-        }
+        "message": "Product successfully added",
+        "product": format_product(new_product)
     }
 
 
-# PATCH - Update specific fields of a product
+# ----------------------------------------
+# PATCH - Update selected product fields
+# ----------------------------------------
+
 @router.patch("/{product_id}")
 def update_product(
     product_id: int,
-    updated_data: dict = Body(...),
+    updated_data: ProductUpdate,
     db: Session = Depends(get_db)
 ):
-    # Find the existing product
+
     product = db.query(Product).filter(
         Product.id == product_id
     ).first()
@@ -97,44 +128,48 @@ def update_product(
             detail="Product not found"
         )
 
-    # Allow only these fields to be updated
-    allowed_fields = {"name", "price", "quantity"}
+    update_fields = updated_data.model_dump(
+        exclude_unset=True
+    )
 
-    # Reject unsupported fields
-    invalid_fields = set(updated_data.keys()) - allowed_fields
-
-    if invalid_fields:
+    if not update_fields:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid fields: {', '.join(sorted(invalid_fields))}"
+            detail="No fields provided for update"
         )
 
-    # Update only the fields provided
-    for field, value in updated_data.items():
+    # Name, price and quantity cannot be null
+    for field, value in update_fields.items():
+
+        if value is None and field != "image_url":
+            raise HTTPException(
+                status_code=400,
+                detail=f"{field} cannot be null"
+            )
+
+    for field, value in update_fields.items():
         setattr(product, field, value)
 
     db.commit()
     db.refresh(product)
 
     return {
-        "message": "Product is updated",
-        "product": {
-            "id": product.id,
-            "name": product.name,
-            "price": product.price,
-            "quantity": product.quantity
-        }
+        "message": "Product successfully updated",
+        "product": format_product(product)
     }
 
 
+# ----------------------------------------
 # PUT - Replace an entire product
+# ----------------------------------------
+
 @router.put("/{product_id}")
 def replace_product(
     product_id: int,
     updated_product: ProductCreate,
     db: Session = Depends(get_db)
 ):
-    # Find the existing product
+
     product = db.query(Product).filter(
         Product.id == product_id
     ).first()
@@ -145,39 +180,36 @@ def replace_product(
             detail="Product not found"
         )
 
-    # Ensure the body ID matches the URL ID
     if updated_product.id != product_id:
         raise HTTPException(
             status_code=400,
             detail="Product ID mismatch"
         )
 
-    # Replace all editable product fields
     product.name = updated_product.name
     product.price = updated_product.price
     product.quantity = updated_product.quantity
+    product.image_url = updated_product.image_url
 
     db.commit()
     db.refresh(product)
 
     return {
-        "message": "Product is successfully updated",
-        "product": {
-            "id": product.id,
-            "name": product.name,
-            "price": product.price,
-            "quantity": product.quantity
-        }
+        "message": "Product successfully replaced",
+        "product": format_product(product)
     }
 
 
+# ----------------------------------------
 # DELETE - Delete a product
+# ----------------------------------------
+
 @router.delete("/{product_id}")
 def delete_product(
     product_id: int,
     db: Session = Depends(get_db)
 ):
-    # Find the existing product
+
     product = db.query(Product).filter(
         Product.id == product_id
     ).first()
@@ -188,18 +220,12 @@ def delete_product(
             detail="Product not found"
         )
 
-    # Store the details before deletion
-    deleted_product = {
-        "id": product.id,
-        "name": product.name,
-        "price": product.price,
-        "quantity": product.quantity
-    }
+    deleted_product = format_product(product)
 
     db.delete(product)
     db.commit()
 
     return {
-        "message": "Product is successfully deleted",
+        "message": "Product successfully deleted",
         "product": deleted_product
     }
