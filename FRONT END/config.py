@@ -1,30 +1,22 @@
-# ============================================
-# CHAITU STORE - CONFIGURATION
-# ============================================
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Backend base URL
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = os.getenv(
+    "API_BASE_URL",
+    "http://127.0.0.1:8000"
+).rstrip("/")
 
-
-# ============================================
-# API ENDPOINTS
-# ============================================
-
-# Product APIs
+# API endpoints
 PRODUCTS_URL = f"{BASE_URL}/products/"
-
-# User APIs
 REGISTER_URL = f"{BASE_URL}/users/register"
 LOGIN_URL = f"{BASE_URL}/users/login"
 PROFILE_URL = f"{BASE_URL}/users/me"
 
-
-# ============================================
-# WEBSITE INFORMATION
-# ============================================
-
+# Website information
 STORE_NAME = "CHAITU STORE"
-
 STORE_TAGLINE = "Discover Products. Enjoy Shopping."
-
 CURRENCY = "₹"

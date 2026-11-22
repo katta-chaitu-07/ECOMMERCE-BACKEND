@@ -12,19 +12,18 @@ def get_all_products():
     try:
         response = api_get_products()
 
-        # Case 1: Central API service returns a dictionary
         if isinstance(response, dict):
 
             if not response.get("success", False):
                 return {
                     "success": False,
                     "data": [],
-                    "error": response.get("error") or "Unable to fetch products."
+                    "error": response.get("error")
+                    or "Unable to fetch products."
                 }
 
             products = response.get("data")
 
-        # Case 2: API function returns a raw list
         elif isinstance(response, list):
             products = response
 
@@ -56,11 +55,18 @@ def get_all_products():
                 continue
 
             try:
+                image_url = product.get("image_url")
+
                 clean_product = {
                     "id": int(product["id"]),
                     "name": str(product["name"]),
                     "price": float(product["price"]),
-                    "quantity": int(product["quantity"])
+                    "quantity": int(product["quantity"]),
+                    "image_url": (
+                        str(image_url).strip()
+                        if image_url and str(image_url).strip()
+                        else None
+                    )
                 }
 
                 valid_products.append(clean_product)

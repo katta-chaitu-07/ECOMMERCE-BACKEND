@@ -1,4 +1,8 @@
 
+# ============================================
+# CHAITU STORE - PRODUCTS PAGE
+# ============================================
+
 import streamlit as st
 
 from services.product import get_all_products
@@ -6,11 +10,15 @@ from services.cart import add_to_cart
 from services.auth import is_authenticated
 
 
+# ============================================
+# RENDER PRODUCTS PAGE
+# ============================================
+
 def render_products_page():
 
-    # ==========================================
-    # PAGE HEADER
-    # ==========================================
+    # ----------------------------------------
+    # 1. PAGE HEADER
+    # ----------------------------------------
 
     st.title("🛍️ Explore Our Collection")
 
@@ -20,107 +28,242 @@ def render_products_page():
 
     st.divider()
 
-    # ==========================================
-    # FETCH PRODUCTS
-    # ==========================================
+    # ----------------------------------------
+    # 2. FETCH PRODUCTS
+    # ----------------------------------------
 
-    response = get_all_products()
+    with st.spinner("Loading products..."):
+
+        response = get_all_products()
 
     if not isinstance(response, dict):
+
         st.error("Invalid response received from the server.")
+        st.write("DEBUG RESPONSE:", response)
         return
 
     if not response.get("success"):
+
         st.error(
             response.get("error") or "Unable to load products."
         )
+
+        st.write("DEBUG RESPONSE:", response)
         return
 
-    products = response.get("data") or []
+    products = response.get("data")
 
     if not isinstance(products, list):
-        st.error("Invalid product data received from the server.")
+
+        st.error("Invalid product data received.")
+        st.write("DEBUG DATA:", products)
         return
 
     if not products:
-        st.info("No products are available right now.")
+
+        st.info("No products available right now.")
         return
 
-    # ==========================================
-    # SEARCH AND PRODUCT COUNT
-    # ==========================================
+    # ----------------------------------------
+    # 3. SEARCH AND SORT
+    # ----------------------------------------
 
-    search_col, count_col = st.columns([3, 1])
+    search_col, sort_col = st.columns([2, 2])
 
     with search_col:
+
         search = st.text_input(
             "🔍 Search Products",
             placeholder="Search by product name...",
-            key="product_search"
+            key="search_query"
         )
 
-    with count_col:
-        st.metric(
-            "Available Products",
-            len(products)
+    with sort_col:
+
+        sort_option = st.selectbox(
+            "Sort Products",
+            [
+                "Default",
+                "Price: Low to High",
+                "Price: High to Low",
+                "Name: A to Z"
+            ],
+            key="product_sort"
         )
 
-    # ==========================================
-    # FILTER PRODUCTS
-    # ==========================================
+    # ----------------------------------------
+    # 4. FILTER PRODUCTS
+    # ----------------------------------------
 
-    filtered_products = [
-        product
-        for product in products
-        if search.strip().lower() in
-        str(product.get("name") or "").lower()
-    ]
+    filtered_products = []
+
+    for product in products:
+
+        if not isinstance(product, dict):
+            continue
+
+        name = str(product.get("name", ""))
+
+        if search.strip().lower() in name.lower():
+
+            filtered_products.append(product)
+
+    # ----------------------------------------
+    # 5. SORT PRODUCTS
+    # ----------------------------------------
+
+    if sort_option == "Price: Low to High":
+
+        filtered_products.sort(
+            key=lambda p: float(p.get("price", 0))
+        )
+
+    elif sort_option == "Price: High to Low":
+
+        filtered_products.sort(
+            key=lambda p: float(p.get("price", 0)),
+            reverse=True
+        )
+
+    elif sort_option == "Name: A to Z":
+
+        filtered_products.sort(
+            key=lambda p: str(p.get("name", "")).lower()
+        )
+
+    # ----------------------------------------
+    # 6. PRODUCT COUNT
+    # ----------------------------------------
+
+    st.metric(
+        "Products Found",
+        len(filtered_products)
+    )
 
     if not filtered_products:
+
         st.warning("No products match your search.")
         return
 
     st.divider()
 
-    # ==========================================
-    # PRODUCT DISPLAY
-    # ==========================================
+    # ----------------------------------------
+    # 7. DISPLAY PRODUCT CARDS
+    # ----------------------------------------
 
     columns = st.columns(3)
 
     for index, product in enumerate(filtered_products):
 
-        product_id = product.get("id")
-        name = product.get("name") or "Unnamed Product"
-        price = float(product.get("price") or 0)
-        quantity = int(product.get("quantity") or 0)
+        try:
+
+            product_id = int(product["id"])
+            name = str(product["name"])
+            price = float(product["price"])
+            quantity = int(product["quantity"])
+
+            image_url = product.get("image_url")
+
+            if price < 0 or quantity < 0:
+                raise ValueError("Invalid price or stock.")
+
+        except (KeyError, TypeError, ValueError) as error:
+
+            st.warning(f"Skipping invalid product: {error}")
+            continue
+
+        # ------------------------------------
+        # DEBUG: CHECK IMAGE URL
+        # ------------------------------------
 
         with columns[index % 3]:
 
             with st.container(border=True):
 
-                st.subheader(f"🛍️ {name}")
+                st.write("DEBUG IMAGE URL:", image_url)
 
-                st.title(f"₹{price:,.2f}")
+                # --------------------------------
+                # 8. DISPLAY PRODUCT IMAGE
+                # --------------------------------
+
+                if image_url and str(image_url).strip():
+
+                    try:
+
+                        st.image(
+                            str(image_url).strip(),
+                            use_container_width=True
+                        )
+
+                    except Exception as error:
+
+                        st.warning("Unable to display product image.")
+
+                        st.caption(
+                            f"Image error: {error}"
+                        )
+
+                        st.image(
+                            "https://placehold.co/600x400?text=Image+Unavailable",
+                            use_container_width=True
+                        )
+
+                else:
+
+                    st.image(
+                        "https://placehold.co/600x400?text=No+Product+Image",
+                        use_container_width=True
+                    )
+
+                # --------------------------------
+                # 9. PRODUCT INFORMATION
+                # --------------------------------
+
+                st.markdown(f"### 🛍️ {name}")
+
+                st.markdown(
+                    f"## ₹{price:,.2f}"
+                )
+
+                st.caption(f"Product ID: {product_id}")
 
                 if quantity > 0:
-                    st.success(f"In Stock: {quantity} units")
+
+                    st.success(
+                        f"📦 In Stock: {quantity} units"
+                    )
+
                 else:
+
                     st.error("Out of Stock")
 
                 st.divider()
 
+                # --------------------------------
+                # 10. CART ACTIONS
+                # --------------------------------
+
                 if not is_authenticated():
 
                     if st.button(
-                        "Login to Add to Cart",
+                        "🔐 Login to Add to Cart",
                         key=f"login_product_{product_id}",
                         use_container_width=True
                     ):
+
                         st.session_state.page = "Login"
                         st.rerun()
 
                 elif quantity > 0:
+
+                    selected_quantity = st.number_input(
+                        "Select Quantity",
+                        min_value=1,
+                        max_value=quantity,
+                        value=1,
+                        step=1,
+                        key=f"quantity_{product_id}"
+                    )
 
                     if st.button(
                         "🛒 Add to Cart",
@@ -129,13 +272,21 @@ def render_products_page():
                         use_container_width=True
                     ):
 
-                        result = add_to_cart(product_id)
+                        with st.spinner("Adding to cart..."):
+
+                            result = add_to_cart(
+                                product_id,
+                                quantity=int(selected_quantity)
+                            )
 
                         if result.get("success"):
+
                             st.success(
                                 f"{name} added to your cart!"
                             )
+
                         else:
+
                             st.error(
                                 result.get("error")
                                 or "Unable to add product."
@@ -150,9 +301,9 @@ def render_products_page():
                         use_container_width=True
                     )
 
-    # ==========================================
-    # FOOTER
-    # ==========================================
+    # ----------------------------------------
+    # 11. FOOTER
+    # ----------------------------------------
 
     st.divider()
 

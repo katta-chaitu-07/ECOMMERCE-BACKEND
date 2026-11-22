@@ -2,11 +2,14 @@
 import requests
 
 API_URL = "http://127.0.0.1:8000"
-
 TIMEOUT = 10
 
 
-def make_request(method, endpoint, data=None, token=None):
+# ==========================================
+# CENTRAL API REQUEST FUNCTION
+# ==========================================
+
+def make_request(method, endpoint, data=None, token=None, params=None):
 
     url = f"{API_URL}{endpoint}"
 
@@ -21,6 +24,7 @@ def make_request(method, endpoint, data=None, token=None):
             method=method,
             url=url,
             json=data,
+            params=params,
             headers=headers,
             timeout=TIMEOUT
         )
@@ -31,7 +35,6 @@ def make_request(method, endpoint, data=None, token=None):
             response_data = {}
 
         if response.ok:
-
             return {
                 "success": True,
                 "data": response_data,
@@ -39,10 +42,13 @@ def make_request(method, endpoint, data=None, token=None):
                 "status_code": response.status_code
             }
 
-        detail = response_data.get(
-            "detail",
-            "Something went wrong."
-        )
+        if isinstance(response_data, dict):
+            detail = response_data.get(
+                "detail",
+                "Something went wrong."
+            )
+        else:
+            detail = "Something went wrong."
 
         return {
             "success": False,
@@ -134,4 +140,69 @@ def get_products():
     return make_request(
         method="GET",
         endpoint="/products/"
+    )
+
+
+# ==========================================
+# GET PRODUCT BY ID
+# ==========================================
+
+def get_product(product_id):
+
+    return make_request(
+        method="GET",
+        endpoint=f"/products/{product_id}"
+    )
+
+
+# ==========================================
+# ADD PRODUCT TO CART
+# ==========================================
+
+def add_cart_product(product_id, quantity, token):
+
+    return make_request(
+        method="POST",
+        endpoint=f"/cart/add/{product_id}",
+        params={"quantity": quantity},
+        token=token
+    )
+
+
+# ==========================================
+# GET CART
+# ==========================================
+
+def get_cart(token):
+
+    return make_request(
+        method="GET",
+        endpoint="/cart/",
+        token=token
+    )
+
+
+# ==========================================
+# CHECKOUT
+# ==========================================
+
+def checkout_order(token):
+
+    return make_request(
+        method="POST",
+        endpoint="/orders/checkout",
+        token=token
+    )
+
+
+# ==========================================
+# GET CUSTOMER ORDERS
+# ==========================================
+
+def get_customer_orders(token):
+
+    return make_request(
+        method="GET",
+        endpoint="/orders/",
+        token=token
     )
