@@ -1,15 +1,13 @@
-
 import os
 import streamlit as st
 from dotenv import load_dotenv
 
-# Load local environment variables during development
 load_dotenv()
 
-# Read the cloud secret when deployed; otherwise use the local URL
+# Read the deployed backend URL from Streamlit Secrets
 try:
     BASE_URL = st.secrets["API_BASE_URL"].rstrip("/")
-except Exception:
+except (KeyError, FileNotFoundError):
     BASE_URL = os.getenv(
         "API_BASE_URL",
         "http://127.0.0.1:8000"
